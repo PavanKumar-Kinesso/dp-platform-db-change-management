@@ -1,0 +1,75 @@
+name: Extract Schemas
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_database:
+        description: 'Source database name'
+        required: true
+        type: string
+      schemas:
+        description: 'Comma-separated list of schemas to extract'
+        required: true
+        type: string
+      db_prefix:
+        description: 'Database prefix for target environment'
+        required: false
+        default: ''
+        type: string
+
+env:
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+  SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+  SNOWFLAKE_DATABASE: ${{ github.event.inputs.source_database }}
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Extract schemas
+      run: |
+        # Convert comma-separated list to space-separated for the script
+        SCHEMAS=$(echo "${{ github.event.inputs.schemas }}" | tr ',' ' ')
+        
+        echo "Extracting schemas: $SCHEMAS from ${{ github.event.inputs.source_database }}..."
+        
+        python scripts/export_schema.py \
+          --database "${{ github.event.inputs.source_database }}" \
+          --schemas $SCHEMAS \
+          --db-prefix "${{ github.event.inputs.db_prefix }}"
+    
+    - name: Create Pull Request
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "Extract schemas from ${{ github.event.inputs.source_database }}"
+        title: "Schema Extraction: ${{ github.event.inputs.schemas }}"
+        body: |
+          ## Schema Extraction
+          
+          **Source Database:** `${{ github.event.inputs.source_database }}`
+          **Schemas:** `${{ github.event.inputs.schemas }}`
+          **DB Prefix:** `${{ github.event.inputs.db_prefix || 'None' }}`
+          
+          This PR contains the extracted DDL and grants for the specified schemas.
+          
+          Please review the changes before merging.
+        branch: extract-schemas-${{ github.run_number }}
+        delete-branch: true

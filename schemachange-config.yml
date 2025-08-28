@@ -1,0 +1,19 @@
+# Schemachange configuration file
+
+config-version: 1
+
+# Create change history table if it doesn't exist
+create-change-history-table: true
+
+# Change history table configuration
+change-history-table:
+  schema: SCHEMACHANGE
+  table: CHANGE_HISTORY
+
+# Default variables that can be overridden at runtime
+vars:
+  ENV: DEV
+  DB_PREFIX: TEST
+  
+# Verbose output for debugging
+verbose: true

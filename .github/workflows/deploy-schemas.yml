@@ -1,0 +1,88 @@
+name: Deploy Schemas
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'schemas/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'DEV'
+        type: choice
+        options:
+          - DEV
+          - SIT
+          - QA
+          - UAT
+          - PROD
+      schema:
+        description: 'Schema to deploy (leave empty for all)'
+        required: false
+        type: string
+      db_prefix:
+        description: 'Database prefix'
+        required: true
+        default: 'TEST'
+        type: string
+
+env:
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+  SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'DEV' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Determine target environment
+      id: env
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "target_env=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "db_prefix=${{ github.event.inputs.db_prefix }}" >> $GITHUB_OUTPUT
+        else
+          echo "target_env=DEV" >> $GITHUB_OUTPUT
+          echo "db_prefix=TEST" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Deploy specific schema
+      if: github.event.inputs.schema != ''
+      run: |
+        echo "Deploying ${{ github.event.inputs.schema }} to ${{ steps.env.outputs.target_env }}..."
+        python scripts/apply_schema.py \
+          --target ${{ steps.env.outputs.target_env }} \
+          --schema-folder ${{ github.event.inputs.schema }} \
+          --db-prefix ${{ steps.env.outputs.db_prefix }}
+    
+    - name: Deploy all schemas
+      if: github.event.inputs.schema == ''
+      run: |
+        echo "Deploying all schemas to ${{ steps.env.outputs.target_env }}..."
+        for schema in Monitoring ReportingApps DATA_AMS; do
+          echo "Deploying $schema..."
+          python scripts/apply_schema.py \
+            --target ${{ steps.env.outputs.target_env }} \
+            --schema-folder $schema \
+            --db-prefix ${{ steps.env.outputs.db_prefix }}
+        done
