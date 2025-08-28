@@ -214,3 +214,7 @@ scripts/__pycache__/
 schemas/*/temp/
 schemas/*/temp_*/
 schemas/*/extraction_*/
+.DS_Store
+schemas/.DS_Store
+scripts/.DS_Store
+scripts/utils/.DS_Store
