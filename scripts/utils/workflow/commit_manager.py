@@ -36,7 +36,7 @@ class CommitManager:
         if not self.final_dir.exists():
             print(f"❌ Final directory not found: {self.final_dir}")
             print(f"🔄 Generate final version first:")
-            print(f"   python scripts/generate_final.py --schema {schema_name}")
+            print(f"   python scripts/export_schema.py --workflow generate --schema {schema_name}")
             return False
         
         final_files = list(self.final_dir.glob("*.sql"))

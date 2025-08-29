@@ -1,0 +1,13 @@
+-- FINAL VERSION: DATA_AMS Schema
+-- Generated at: 2025-08-29T14:58:14.591034
+-- Note: No templating decisions were made - using raw extraction
+-- ⚠️  This version may contain environment-specific references
+
+-- Grants exported from ALTO_SIT at 20250829145710
+-- Environment references templated for multi-environment deployment
+GRANT USAGE ON SCHEMA IDENTIFIER('{{ DB_PREFIX }}_{{ DB_BASE }}_{{ ENV }}.DATA_AMS') TO ROLE ALTO_REPORTING;
+GRANT OWNERSHIP ON SCHEMA IDENTIFIER('{{ DB_PREFIX }}_{{ DB_BASE }}_{{ ENV }}.DATA_AMS') TO ROLE ALTO_SIT_DATA_TEAM WITH GRANT OPTION;
+GRANT USAGE ON SCHEMA IDENTIFIER('{{ DB_PREFIX }}_{{ DB_BASE }}_{{ ENV }}.DATA_AMS') TO ROLE ALTO_SIT_DATA_TEAM;
+GRANT USAGE ON SCHEMA IDENTIFIER('{{ DB_PREFIX }}_{{ DB_BASE }}_{{ ENV }}.DATA_AMS') TO ROLE ALTO_SIT_REPORT_TEAM;
+GRANT CREATE TABLE ON SCHEMA IDENTIFIER('{{ DB_PREFIX }}_{{ DB_BASE }}_{{ ENV }}.DATA_AMS') TO ROLE SYSADMIN;
+GRANT USAGE ON SCHEMA IDENTIFIER('{{ DB_PREFIX }}_{{ DB_BASE }}_{{ ENV }}.DATA_AMS') TO ROLE SYSADMIN;

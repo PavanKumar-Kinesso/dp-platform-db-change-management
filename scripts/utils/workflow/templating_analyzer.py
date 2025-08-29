@@ -342,9 +342,10 @@ class TemplatingAnalyzer:
         
         report += "## 🚀 Next Steps\n\n"
         report += "1. Review this analysis report\n"
-        report += "2. Run interactive review: `python scripts/review_templating.py --schema {analysis_results['schema_name']}`\n"
+        report += "2. Run interactive review: `python scripts/export_schema.py --workflow review --schema " + analysis_results['schema_name'] + "`\n"
         report += "3. Make templating decisions based on the analysis\n"
-        report += "4. Generate final version: `python scripts/generate_final.py --schema {analysis_results['schema_name']}`\n"
+        report += "4. Generate final version: `python scripts/export_schema.py --workflow generate --schema " + analysis_results['schema_name'] + "`\n"
+        report += "5. Commit final files: `python scripts/export_schema.py --workflow commit --schema " + analysis_results['schema_name'] + "`\n"
         
         return report
     

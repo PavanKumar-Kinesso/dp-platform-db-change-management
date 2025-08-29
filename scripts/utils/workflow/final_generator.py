@@ -286,7 +286,7 @@ class FinalVersionGenerator:
         final_files = self.get_final_files()
         if not final_files:
             print(f"❌ No final files found. Generate final version first:")
-            print(f"   python scripts/generate_final.py --schema {schema_name}")
+            print(f"   python scripts/export_schema.py --workflow generate --schema {schema_name}")
             return
         
         print(f"\n📋 FINAL VERSION PREVIEW: {schema_name}")
