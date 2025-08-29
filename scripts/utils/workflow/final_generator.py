@@ -93,10 +93,18 @@ class FinalVersionGenerator:
         
         self.final_dir.mkdir(parents=True, exist_ok=True)
         
-        # Copy raw files to final directory
-        for sql_file in self.raw_dir.glob("*.sql"):
-            final_file = self.final_dir / sql_file.name
-            shutil.copy2(sql_file, final_file)
+        # Check if suggested versions exist and use them, otherwise fall back to raw
+        if self.suggested_dir.exists() and any(self.suggested_dir.glob("*.sql")):
+            print(f"📄 Using suggested versions (with templating applied)")
+            for sql_file in self.suggested_dir.glob("*.sql"):
+                final_file = self.final_dir / sql_file.name
+                shutil.copy2(sql_file, final_file)
+        else:
+            print(f"📄 Using raw versions (no templating)")
+            # Copy raw files to final directory
+            for sql_file in self.raw_dir.glob("*.sql"):
+                final_file = self.final_dir / sql_file.name
+                shutil.copy2(sql_file, final_file)
             
             # Add header comment
             with open(final_file, 'r') as f:

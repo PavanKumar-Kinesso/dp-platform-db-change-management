@@ -82,6 +82,42 @@ class TemplatingAnalyzer:
                 if suggestion:
                     file_analysis['suggestions'].append(suggestion)
         
+        # Look for database names with environment suffixes (e.g., STAGING_SIT, RAW_SIT)
+        # Only template the environment part, keep database names unchanged
+        db_env_patterns = [
+            r'(STAGING)_[A-Z]+',  # STAGING_SIT, STAGING_UAT, etc.
+            r'(RAW)_[A-Z]+',      # RAW_SIT, RAW_UAT, etc.
+            r'(PROD)_[A-Z]+',     # PROD_SIT, PROD_UAT, etc.
+            r'(PREPARE)_[A-Z]+',     # PREPARE_SIT, PREPARE_UAT, etc.
+            r'(PLATFORM)_[A-Z]+',     # PLATFORM_SIT, PLATFORM_UAT, etc.
+            r'(CONSUME)_[A-Z]+',     # CONSUME_SIT, CONSUME_UAT, etc.
+        ]
+        
+        for pattern in db_env_patterns:
+            matches = re.finditer(pattern, content, re.IGNORECASE)
+            for match in matches:
+                match_text = match.group()
+                # Only process if it ends with a valid environment
+                if any(env in match_text.upper() for env in ['SIT', 'UAT', 'PROD', 'DEV']):
+                    suggestion = self._analyze_database_environment_reference(
+                        match_text, match.start(), match.end(), content, match.group(1)
+                    )
+                    if suggestion:
+                        file_analysis['suggestions'].append(suggestion)
+        
+        # Look for role names with environment suffixes (e.g., ROLE_APP_CONSUME_SIT)
+        role_pattern = r'ROLE_[A-Z_]+_[A-Z]+'
+        role_matches = re.finditer(role_pattern, content, re.IGNORECASE)
+        for match in role_matches:
+            match_text = match.group()
+            # Check if it ends with a valid environment
+            if any(env in match_text.upper() for env in ['SIT', 'UAT', 'PROD', 'DEV']):
+                suggestion = self._analyze_role_reference(
+                    match_text, match.start(), match.end(), content
+                )
+                if suggestion:
+                    file_analysis['suggestions'].append(suggestion)
+        
         # Find cross-database references
         cross_db_refs = self._find_cross_database_references(content)
         file_analysis['cross_db_refs'] = cross_db_refs
@@ -110,6 +146,58 @@ class TemplatingAnalyzer:
             'type': 'database_reference',
             'original': match_text,
             'suggested': f"{{{{DB_BASE}}}}_{{{{ENV}}}}",
+            'context': context.strip(),
+            'position': (start, end),
+            'is_safe': is_safe,
+            'reason': reason,
+            'risk_level': 'LOW' if is_safe else 'MEDIUM'
+        }
+        
+        return suggestion
+    
+    def _analyze_database_environment_reference(self, match_text, start, end, content, db_name):
+        """Analyze a database name with environment suffix for templating safety."""
+        
+        # Get context around the match
+        context_start = max(0, start - 50)
+        context_end = min(len(content), end + 50)
+        context = content[context_start:context_end]
+        
+        # Determine if this is safe to template
+        is_safe, reason = self._is_safe_to_template(match_text, context, content, start, end)
+        
+        # Keep the database name unchanged, only template the environment part
+        suggestion = {
+            'type': 'database_environment_reference',
+            'original': match_text,
+            'suggested': db_name + "_{{ENV}}",
+            'context': context.strip(),
+            'position': (start, end),
+            'is_safe': is_safe,
+            'reason': reason,
+            'risk_level': 'LOW' if is_safe else 'MEDIUM'
+        }
+        
+        return suggestion
+    
+    def _analyze_role_reference(self, match_text, start, end, content):
+        """Analyze a role reference with environment suffix for templating safety."""
+        
+        # Get context around the match
+        context_start = max(0, start - 50)
+        context_end = min(len(content), end + 50)
+        context = content[context_start:context_end]
+        
+        # Determine if this is safe to template
+        is_safe, reason = self._is_safe_to_template(match_text, context, content, start, end)
+        
+        # Extract the base part (e.g., ROLE_APP_CONSUME from ROLE_APP_CONSUME_SIT)
+        base_part = '_'.join(match_text.split('_')[:-1])
+        
+        suggestion = {
+            'type': 'role_reference',
+            'original': match_text,
+            'suggested': "{{" + base_part + "}}_{{ENV}}",
             'context': context.strip(),
             'position': (start, end),
             'is_safe': is_safe,
@@ -353,12 +441,26 @@ class TemplatingAnalyzer:
         """Generate suggested templated versions of the files."""
         self.suggested_dir.mkdir(parents=True, exist_ok=True)
         
-        for file_analysis in analysis_results['files_analyzed']:
-            if not file_analysis['suggestions']:
+        # Group suggestions by file
+        suggestions_by_file = {}
+        for suggestion in analysis_results['templating_suggestions']:
+            # Find which file this suggestion belongs to
+            for file_analysis in analysis_results['files_analyzed']:
+                original_file = self.raw_dir / file_analysis['file_name']
+                with open(original_file, 'r') as f:
+                    content = f.read()
+                if suggestion['original'] in content:
+                    if file_analysis['file_name'] not in suggestions_by_file:
+                        suggestions_by_file[file_analysis['file_name']] = []
+                    suggestions_by_file[file_analysis['file_name']].append(suggestion)
+                    break
+        
+        for file_name, file_suggestions in suggestions_by_file.items():
+            if not file_suggestions:
                 continue
             
             # Load original file
-            original_file = self.raw_dir / file_analysis['file_name']
+            original_file = self.raw_dir / file_name
             with open(original_file, 'r') as f:
                 content = f.read()
             
@@ -366,16 +468,16 @@ class TemplatingAnalyzer:
             suggested_content = content
             applied_suggestions = []
             
-            for suggestion in file_analysis['suggestions']:
+            for suggestion in file_suggestions:
                 if suggestion['is_safe']:
-                    suggested_content = suggested_content.replace(
-                        suggestion['original'], 
-                        suggestion['suggested']
-                    )
+                    # Use case-insensitive replacement
+                    import re
+                    pattern = re.compile(re.escape(suggestion['original']), re.IGNORECASE)
+                    suggested_content = pattern.sub(suggestion['suggested'], suggested_content)
                     applied_suggestions.append(suggestion)
             
             # Write suggested version
-            suggested_file = self.suggested_dir / file_analysis['file_name']
+            suggested_file = self.suggested_dir / file_name
             with open(suggested_file, 'w') as f:
                 f.write(f"-- SUGGESTED TEMPLATING (REVIEW CAREFULLY):\n")
                 f.write(f"-- This file contains suggested changes for multi-environment deployment\n")
