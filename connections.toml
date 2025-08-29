@@ -49,25 +49,23 @@ database = "{{DB_PREFIX}}_PLATFORM_{{ENV}}"
 schema = "REPORTINGAPPS"
 
 # =============================================================================
-# LEGACY CONNECTIONS (for backward compatibility)
-# =============================================================================
 
-# Legacy source connection (defaults to ALTO)
-[SRC]
+# Source connections for PLATFORM database schemas
+[SRC_CONFIG]
+account = "KINESSO-KINESSO_REPORTING"
+user = "PAVAN.KUMAR@KINESSO.COM"
+authenticator = "externalbrowser"
+role = "DATAADMIN"
+warehouse = "WH_APP_UPLOAD_XS_{{ENV}}"
+database = "PLATFORM_{{ENV}}"
+schema = "CONFIG"
+
+# Target connections for PLATFORM database schemas
+[TGT_CONFIG]
 account = "KINESSO-KINESSO"
 user = "PAVAN.KUMAR@KINESSO.COM"
 authenticator = "externalbrowser"
-role = "ACCOUNTADMIN"
-warehouse = "GR_DATA_TEAM_PROD"
-database = "ALTO_{{ENV}}"
-schema = "DATA_AMS"
-
-# Legacy target connection (defaults to ALTO)
-[TGT]
-account = "KINESSO-KINESSO"
-user = "PAVAN.KUMAR@KINESSO.COM"
-authenticator = "externalbrowser"
-role = "ACCOUNTADMIN"
-warehouse = "GR_DATA_TEAM_PROD"
-database = "{{DB_PREFIX}}_ALTO_{{ENV}}"
-schema = "DATA_AMS"
+role = "DATAADMIN"
+warehouse = "WH_APP_UPLOAD_XS_{{ENV}}"
+database = "{{DB_PREFIX}}_PLATFORM_{{ENV}}"
+schema = "CONFIG"
